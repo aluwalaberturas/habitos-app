@@ -14,7 +14,12 @@ const DEFAULT_HABITS = [
   { name: "Audiolibro o charla TED" },
   { name: "1 hora de estudio" },
   { name: "Tomar agua", type: "counter", target: 12, unit: "vaso" },
+  { name: "Acostarse antes de las 23:30" },
+  { name: "Levantarse antes de las 7am" },
+  { name: "Meditar 15 minutos" },
+  { name: "Elongar cuello y espalda" },
 ];
+const MIGRATION_KEY = "habitos-migrated-v2";
 
 function todayISO(d = new Date()) {
   const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
@@ -47,6 +52,23 @@ if (state.habits.length === 0 && !localStorage.getItem(SEEDED_KEY)) {
   }));
   save(state);
   localStorage.setItem(SEEDED_KEY, "1");
+}
+
+if (!localStorage.getItem(MIGRATION_KEY)) {
+  const existingNames = new Set(state.habits.map((h) => h.name));
+  const missing = DEFAULT_HABITS.filter((h) => !existingNames.has(h.name));
+  if (missing.length) {
+    missing.forEach((h) => {
+      state.habits.push({
+        id: uid(),
+        name: h.name,
+        done: {},
+        ...(h.type ? { type: h.type, target: h.target, unit: h.unit } : {}),
+      });
+    });
+    save(state);
+  }
+  localStorage.setItem(MIGRATION_KEY, "1");
 }
 
 function uid() {

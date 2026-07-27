@@ -3,23 +3,29 @@ const SEEDED_KEY = "habitos-seeded-v1";
 const MONTH_ABBR = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
 const DEFAULT_HABITS = [
-  { name: "Lavarse los dientes (mañana)" },
-  { name: "Lavarse los dientes (noche)" },
-  { name: "Caminar 15 min después del almuerzo" },
-  { name: "Caminar 15 min después de la cena" },
-  { name: "Comer sano (mañana)" },
-  { name: "Comer sano (noche)" },
-  { name: "No tomar alcohol" },
-  { name: "1 hora de ejercicio" },
-  { name: "Audiolibro o charla TED" },
-  { name: "1 hora de estudio" },
-  { name: "Tomar agua", type: "counter", target: 12, unit: "vaso" },
-  { name: "Acostarse antes de las 23:30" },
   { name: "Levantarse antes de las 7am" },
-  { name: "Meditar 15 minutos" },
+  { name: "Lavarse los dientes (mañana)" },
+  { name: "Tomar pastilla presión" },
+  { name: "Comer sano (mediodía)" },
+  { name: "Caminar 15 min después del almuerzo" },
+  { name: "Tomar vitamina C" },
+  { name: "Tomar omega 3" },
+  { name: "Tomar vitamina D" },
+  { name: "Tomar agua", type: "counter", target: 12, unit: "vaso" },
   { name: "Elongar cuello y espalda" },
+  { name: "1 hora de ejercicio" },
+  { name: "1 hora de estudio" },
+  { name: "Meditar 15 minutos" },
+  { name: "Comer sano (noche)" },
+  { name: "Caminar 15 min después de la cena" },
+  { name: "Lavarse los dientes (noche)" },
+  { name: "Tomar magnesio" },
+  { name: "No tomar alcohol" },
+  { name: "Audiolibro o charla TED" },
+  { name: "Acostarse antes de las 23:30" },
 ];
 const MIGRATION_KEY = "habitos-migrated-v2";
+const MIGRATION_V3_KEY = "habitos-migrated-v3";
 
 function todayISO(d = new Date()) {
   const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
@@ -88,6 +94,33 @@ if (!localStorage.getItem(MIGRATION_KEY)) {
     save(state);
   }
   localStorage.setItem(MIGRATION_KEY, "1");
+}
+
+if (!localStorage.getItem(MIGRATION_V3_KEY)) {
+  const oldMorningEat = state.habits.find((h) => h.name === "Comer sano (mañana)");
+  if (oldMorningEat) oldMorningEat.name = "Comer sano (mediodía)";
+
+  const existingNames = new Set(state.habits.map((h) => h.name));
+  DEFAULT_HABITS.forEach((h) => {
+    if (!existingNames.has(h.name)) {
+      state.habits.push({
+        id: uid(),
+        name: h.name,
+        done: {},
+        ...(h.type ? { type: h.type, target: h.target, unit: h.unit } : {}),
+      });
+    }
+  });
+
+  const orderIndex = new Map(DEFAULT_HABITS.map((h, i) => [h.name, i]));
+  state.habits.sort((a, b) => {
+    const ai = orderIndex.has(a.name) ? orderIndex.get(a.name) : 999;
+    const bi = orderIndex.has(b.name) ? orderIndex.get(b.name) : 999;
+    return ai - bi;
+  });
+
+  save(state);
+  localStorage.setItem(MIGRATION_V3_KEY, "1");
 }
 
 function uid() {

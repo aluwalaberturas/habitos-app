@@ -19,13 +19,14 @@ const DEFAULT_HABITS = [
   { name: "Comer sano (noche)" },
   { name: "Caminar 15 min después de la cena" },
   { name: "Lavarse los dientes (noche)" },
-  { name: "Tomar magnesio" },
   { name: "No tomar alcohol" },
   { name: "Audiolibro o charla TED" },
+  { name: "Tomar magnesio" },
   { name: "Acostarse antes de las 23:30" },
 ];
 const MIGRATION_KEY = "habitos-migrated-v2";
 const MIGRATION_V3_KEY = "habitos-migrated-v3";
+const MIGRATION_V4_KEY = "habitos-migrated-v4";
 
 function todayISO(d = new Date()) {
   const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
@@ -121,6 +122,17 @@ if (!localStorage.getItem(MIGRATION_V3_KEY)) {
 
   save(state);
   localStorage.setItem(MIGRATION_V3_KEY, "1");
+}
+
+if (!localStorage.getItem(MIGRATION_V4_KEY)) {
+  const orderIndex = new Map(DEFAULT_HABITS.map((h, i) => [h.name, i]));
+  state.habits.sort((a, b) => {
+    const ai = orderIndex.has(a.name) ? orderIndex.get(a.name) : 999;
+    const bi = orderIndex.has(b.name) ? orderIndex.get(b.name) : 999;
+    return ai - bi;
+  });
+  save(state);
+  localStorage.setItem(MIGRATION_V4_KEY, "1");
 }
 
 function uid() {

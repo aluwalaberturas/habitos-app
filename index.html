@@ -70,20 +70,31 @@
   .check-btn.done svg path{ stroke:#0a0a0a; }
   .check-btn svg path{ stroke:var(--gold); }
 
-  .week{
-    display:flex; gap:6px; justify-content:space-between;
+  .year-scroll{
+    overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:2px; margin:0 -2px;
   }
-  .day{
-    flex:1; display:flex; flex-direction:column; align-items:center; gap:5px;
+  .year-months{
+    position:relative; height:14px; margin-bottom:2px;
   }
-  .day-label{ font-size:9px; color:var(--text-dim); letter-spacing:0.05em; text-transform:uppercase; }
-  .day-dot{
-    width:100%; aspect-ratio:1; max-width:32px; border-radius:50%;
-    border:1px solid var(--border); background:transparent;
+  .year-month-label{
+    position:absolute; top:0; font-size:9px; color:var(--text-dim);
+    letter-spacing:0.03em; text-transform:uppercase; white-space:nowrap;
   }
-  .day-dot.filled{ background:var(--gold-dim); border-color:var(--gold-dim); }
-  .day-dot.today{ border-color:var(--gold); border-width:1.5px; }
-  .day-dot.today.filled{ background:var(--gold); }
+  .year-grid{
+    display:flex; gap:3px;
+  }
+  .year-week{
+    display:flex; flex-direction:column; gap:3px;
+  }
+  .year-day{
+    width:12px; height:12px; border-radius:3px;
+    background:var(--border); flex-shrink:0;
+  }
+  .year-day.pad{ background:transparent; }
+  .year-day.future{ background:transparent; border:1px solid var(--border); opacity:0.5; }
+  .year-day.filled{ background:var(--gold-dim); }
+  .year-day.today{ box-shadow:0 0 0 1.5px var(--gold); }
+  .year-day.today.filled{ background:var(--gold); }
 
   .row-actions{
     display:flex; justify-content:flex-end; margin-top:10px; gap:16px;
@@ -134,6 +145,23 @@
     text-transform:uppercase; border:1px solid var(--border); background:transparent; color:var(--text-dim);
   }
   .btn.primary{ background:var(--gold); border-color:var(--gold); color:#0a0a0a; font-weight:700; }
+
+  .counter-toggle{
+    display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-dim);
+    margin:-4px 0 14px; letter-spacing:0.01em;
+  }
+  .counter-toggle input{ width:16px; height:16px; accent-color:var(--gold); }
+
+  .counter-stepper{ display:flex; align-items:center; gap:10px; margin-left:12px; flex-shrink:0; }
+  .stepper-btn{
+    width:36px; height:36px; border-radius:50%; border:1px solid var(--border);
+    background:transparent; color:var(--gold); font-size:18px; line-height:1;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .stepper-btn:active{ border-color:var(--gold); }
+  .counter-value{ font-size:13px; color:var(--text-dim); white-space:nowrap; }
+  .counter-value b{ color:var(--gold); font-size:15px; }
+  .counter-value.done b{ color:var(--gold); }
 </style>
 </head>
 <body>
@@ -150,6 +178,10 @@
     <div class="sheet">
       <h2 id="sheet-title">Nuevo hábito</h2>
       <input type="text" id="habit-input" placeholder="Ej: Tomar agua, Leer, Gimnasio" maxlength="40">
+      <label class="counter-toggle">
+        <input type="checkbox" id="habit-counter-toggle"> Contar unidades (ej: vasos de agua)
+      </label>
+      <input type="number" id="habit-target-input" placeholder="Meta por día (ej: 12)" min="1" style="display:none">
       <div class="sheet-actions">
         <button class="btn" id="cancel-btn">Cancelar</button>
         <button class="btn primary" id="save-btn">Guardar</button>

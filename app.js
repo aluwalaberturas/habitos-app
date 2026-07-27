@@ -1,5 +1,17 @@
 const STORAGE_KEY = "habitos-data-v1";
+const SEEDED_KEY = "habitos-seeded-v1";
 const DAY_LABELS = ["D", "L", "M", "M", "J", "V", "S"];
+
+const DEFAULT_HABITS = [
+  "Lavarse los dientes",
+  "Caminar 15 min después del almuerzo",
+  "Caminar 15 min después de la cena",
+  "Comer sano",
+  "No tomar alcohol",
+  "1 hora de ejercicio",
+  "Audiolibro o charla TED",
+  "1 hora de estudio",
+];
 
 function todayISO(d = new Date()) {
   const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
@@ -22,6 +34,12 @@ function save(data) {
 
 let state = load();
 let editingId = null;
+
+if (state.habits.length === 0 && !localStorage.getItem(SEEDED_KEY)) {
+  state.habits = DEFAULT_HABITS.map((name) => ({ id: uid(), name, done: {} }));
+  save(state);
+  localStorage.setItem(SEEDED_KEY, "1");
+}
 
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);

@@ -1,18 +1,19 @@
 const STORAGE_KEY = "habitos-data-v1";
 const SEEDED_KEY = "habitos-seeded-v1";
-const DAY_LABELS = ["D", "L", "M", "M", "J", "V", "S"];
+const MONTH_ABBR = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
 const DEFAULT_HABITS = [
-  "Lavarse los dientes (mañana)",
-  "Lavarse los dientes (noche)",
-  "Caminar 15 min después del almuerzo",
-  "Caminar 15 min después de la cena",
-  "Comer sano (mañana)",
-  "Comer sano (noche)",
-  "No tomar alcohol",
-  "1 hora de ejercicio",
-  "Audiolibro o charla TED",
-  "1 hora de estudio",
+  { name: "Lavarse los dientes (mañana)" },
+  { name: "Lavarse los dientes (noche)" },
+  { name: "Caminar 15 min después del almuerzo" },
+  { name: "Caminar 15 min después de la cena" },
+  { name: "Comer sano (mañana)" },
+  { name: "Comer sano (noche)" },
+  { name: "No tomar alcohol" },
+  { name: "1 hora de ejercicio" },
+  { name: "Audiolibro o charla TED" },
+  { name: "1 hora de estudio" },
+  { name: "Tomar agua", type: "counter", target: 12, unit: "vaso" },
 ];
 
 function todayISO(d = new Date()) {
@@ -38,7 +39,12 @@ let state = load();
 let editingId = null;
 
 if (state.habits.length === 0 && !localStorage.getItem(SEEDED_KEY)) {
-  state.habits = DEFAULT_HABITS.map((name) => ({ id: uid(), name, done: {} }));
+  state.habits = DEFAULT_HABITS.map((h) => ({
+    id: uid(),
+    name: h.name,
+    done: {},
+    ...(h.type ? { type: h.type, target: h.target, unit: h.unit } : {}),
+  }));
   save(state);
   localStorage.setItem(SEEDED_KEY, "1");
 }
@@ -47,15 +53,58 @@ function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
 
-function lastNDays(n) {
-  const days = [];
-  const now = new Date();
-  for (let i = n - 1; i >= 0; i--) {
-    const d = new Date(now);
-    d.setDate(d.getDate() - i);
-    days.push(d);
+function isDoneOn(habit, iso) {
+  const v = habit.done[iso];
+  if (habit.type === "counter") return (v || 0) >= habit.target;
+  return !!v;
+}
+
+function isLeapYear(year) {
+  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+}
+
+function buildYearGrid(year) {
+  const jan1 = new Date(year, 0, 1);
+  const startPad = jan1.getDay();
+  const totalDays = isLeapYear(year) ? 366 : 365;
+
+  const cells = [];
+  for (let i = 0; i < startPad; i++) cells.push(null);
+  for (let d = 0; d < totalDays; d++) cells.push(new Date(year, 0, 1 + d));
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const cols = cells.length / 7;
+  const weeks = [];
+  const monthLabels = [];
+  let lastMonth = -1;
+
+  for (let c = 0; c < cols; c++) {
+    const weekCells = cells.slice(c * 7, c * 7 + 7);
+    weeks.push(weekCells);
+    for (const day of weekCells) {
+      if (day && day.getDate() === 1 && day.getMonth() !== lastMonth) {
+        monthLabels.push({ col: c, label: MONTH_ABBR[day.getMonth()] });
+        lastMonth = day.getMonth();
+      }
+    }
   }
-  return days;
+  return { weeks, monthLabels };
+}
+
+function yearStats(habit, year) {
+  const today = new Date();
+  const isCurrentYear = year === today.getFullYear();
+  const end = isCurrentYear ? today : new Date(year, 11, 31);
+  let total = 0;
+  let done = 0;
+  const d = new Date(year, 0, 1);
+  while (d <= end) {
+    total++;
+    if (isDoneOn(habit, todayISO(d))) done++;
+    d.setDate(d.getDate() + 1);
+  }
+  const percent = total ? Math.round((done / total) * 100) : 0;
+  return { total, done, percent };
 }
 
 function computeStreak(habit) {
@@ -63,7 +112,7 @@ function computeStreak(habit) {
   const d = new Date();
   while (true) {
     const iso = todayISO(d);
-    if (habit.done[iso]) {
+    if (isDoneOn(habit, iso)) {
       streak++;
       d.setDate(d.getDate() - 1);
     } else {
@@ -90,12 +139,16 @@ function render() {
   list.innerHTML = "";
 
   const iso = todayISO();
-  const doneToday = state.habits.filter((h) => h.done[iso]).length;
+  const year = new Date().getFullYear();
+  const doneToday = state.habits.filter((h) => isDoneOn(h, iso)).length;
   const summary = document.getElementById("summary");
   if (state.habits.length === 0) {
     summary.textContent = "";
   } else {
-    summary.innerHTML = `<b>${doneToday}/${state.habits.length}</b> completados hoy`;
+    const avg = Math.round(
+      state.habits.reduce((sum, h) => sum + yearStats(h, year).percent, 0) / state.habits.length
+    );
+    summary.innerHTML = `<b>${doneToday}/${state.habits.length}</b> completados hoy · promedio del año <b>${avg}%</b>`;
   }
 
   if (state.habits.length === 0) {
@@ -103,37 +156,64 @@ function render() {
     return;
   }
 
-  const days = lastNDays(7);
+  const { weeks, monthLabels } = buildYearGrid(year);
+  const CELL = 12;
+  const GAP = 3;
+  const colWidth = CELL + GAP;
 
   state.habits.forEach((habit) => {
     const streak = computeStreak(habit);
+    const stats = yearStats(habit, year);
     const el = document.createElement("div");
     el.className = "habit";
 
-    const isDoneToday = !!habit.done[iso];
+    const isDoneToday = isDoneOn(habit, iso);
+    const isCounter = habit.type === "counter";
+    const todayCount = habit.done[iso] || 0;
+
+    const monthRow = monthLabels
+      .map((m) => `<span class="year-month-label" style="left:${m.col * colWidth}px">${m.label}</span>`)
+      .join("");
+
+    const gridCols = weeks
+      .map((week) => {
+        const cells = week
+          .map((day) => {
+            if (!day) return `<div class="year-day pad"></div>`;
+            const dIso = todayISO(day);
+            const isFuture = day > new Date(new Date().setHours(23, 59, 59, 999));
+            const filled = isDoneOn(habit, dIso);
+            const isToday = dIso === iso;
+            if (isFuture) return `<div class="year-day future"></div>`;
+            const action = isCounter ? "" : `data-action="toggle-day" data-id="${habit.id}" data-date="${dIso}"`;
+            return `<div class="year-day ${filled ? "filled" : ""} ${isToday ? "today" : ""}" ${action}></div>`;
+          })
+          .join("");
+        return `<div class="year-week">${cells}</div>`;
+      })
+      .join("");
 
     el.innerHTML = `
       <div class="habit-top">
         <div class="habit-name">${escapeHtml(habit.name)}</div>
-        <button class="check-btn ${isDoneToday ? "done" : ""}" data-action="toggle-today" data-id="${habit.id}">
-          <svg viewBox="0 0 24 24" fill="none"><path d="M4 12l5 5L20 6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
+        ${
+          isCounter
+            ? `<div class="counter-stepper">
+                <button class="stepper-btn" data-action="counter-dec" data-id="${habit.id}">−</button>
+                <span class="counter-value ${isDoneToday ? "done" : ""}"><b>${todayCount}</b>/${habit.target} ${habit.unit || ""}${todayCount === 1 ? "" : "s"}</span>
+                <button class="stepper-btn" data-action="counter-inc" data-id="${habit.id}">+</button>
+              </div>`
+            : `<button class="check-btn ${isDoneToday ? "done" : ""}" data-action="toggle-today" data-id="${habit.id}">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M4 12l5 5L20 6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>`
+        }
       </div>
-      <div class="week">
-        ${days
-          .map((d) => {
-            const dIso = todayISO(d);
-            const filled = !!habit.done[dIso];
-            const isToday = dIso === iso;
-            return `<div class="day">
-              <div class="day-label">${DAY_LABELS[d.getDay()]}</div>
-              <div class="day-dot ${filled ? "filled" : ""} ${isToday ? "today" : ""}" data-action="toggle-day" data-id="${habit.id}" data-date="${dIso}"></div>
-            </div>`;
-          })
-          .join("")}
+      <div class="year-scroll">
+        <div class="year-months" style="width:${weeks.length * colWidth}px">${monthRow}</div>
+        <div class="year-grid">${gridCols}</div>
       </div>
       <div class="row-actions">
-        <span class="habit-streak">Racha: <b>${streak}</b> ${streak === 1 ? "día" : "días"}</span>
+        <span class="habit-streak">Racha: <b>${streak}</b> ${streak === 1 ? "día" : "días"} · este año <b>${stats.percent}%</b> (${stats.done}/${stats.total})</span>
       </div>
       <div class="row-actions">
         <button class="link-btn" data-action="edit" data-id="${habit.id}">Editar</button>
@@ -162,6 +242,21 @@ function toggleDay(habitId, dateIso) {
   render();
 }
 
+function incrementCounter(habitId, delta) {
+  const habit = state.habits.find((h) => h.id === habitId);
+  if (!habit) return;
+  const iso = todayISO();
+  const current = habit.done[iso] || 0;
+  const next = Math.max(0, current + delta);
+  if (next === 0) {
+    delete habit.done[iso];
+  } else {
+    habit.done[iso] = next;
+  }
+  save(state);
+  render();
+}
+
 function deleteHabit(id) {
   state.habits = state.habits.filter((h) => h.id !== id);
   save(state);
@@ -173,7 +268,13 @@ function openSheet(mode, habit) {
   document.getElementById("sheet-title").textContent =
     mode === "edit" ? "Editar hábito" : "Nuevo hábito";
   const input = document.getElementById("habit-input");
+  const counterToggle = document.getElementById("habit-counter-toggle");
+  const targetInput = document.getElementById("habit-target-input");
   input.value = habit ? habit.name : "";
+  const isCounter = !!(habit && habit.type === "counter");
+  counterToggle.checked = isCounter;
+  targetInput.style.display = isCounter ? "" : "none";
+  targetInput.value = isCounter ? habit.target : "";
   document.getElementById("overlay").classList.add("open");
   setTimeout(() => input.focus(), 200);
 }
@@ -188,11 +289,31 @@ function saveSheet() {
   const name = input.value.trim();
   if (!name) return;
 
+  const isCounter = document.getElementById("habit-counter-toggle").checked;
+  const target = Math.max(1, parseInt(document.getElementById("habit-target-input").value, 10) || 1);
+
   if (editingId) {
     const habit = state.habits.find((h) => h.id === editingId);
-    if (habit) habit.name = name;
+    if (habit) {
+      habit.name = name;
+      if (isCounter) {
+        habit.type = "counter";
+        habit.target = target;
+        habit.unit = habit.unit || "vaso";
+      } else {
+        delete habit.type;
+        delete habit.target;
+        delete habit.unit;
+      }
+    }
   } else {
-    state.habits.push({ id: uid(), name, done: {} });
+    const newHabit = { id: uid(), name, done: {} };
+    if (isCounter) {
+      newHabit.type = "counter";
+      newHabit.target = target;
+      newHabit.unit = "vaso";
+    }
+    state.habits.push(newHabit);
   }
   save(state);
   closeSheet();
@@ -209,6 +330,10 @@ document.getElementById("list").addEventListener("click", (e) => {
     toggleDay(id, todayISO());
   } else if (action === "toggle-day") {
     toggleDay(id, btn.dataset.date);
+  } else if (action === "counter-inc") {
+    incrementCounter(id, 1);
+  } else if (action === "counter-dec") {
+    incrementCounter(id, -1);
   } else if (action === "edit") {
     const habit = state.habits.find((h) => h.id === id);
     openSheet("edit", habit);
@@ -227,6 +352,9 @@ document.getElementById("overlay").addEventListener("click", (e) => {
 });
 document.getElementById("habit-input").addEventListener("keydown", (e) => {
   if (e.key === "Enter") saveSheet();
+});
+document.getElementById("habit-counter-toggle").addEventListener("change", (e) => {
+  document.getElementById("habit-target-input").style.display = e.target.checked ? "" : "none";
 });
 
 if ("serviceWorker" in navigator) {

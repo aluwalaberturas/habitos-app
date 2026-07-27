@@ -139,6 +139,65 @@ function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
 
+const QUOTES = [
+  "La disciplina es elegir entre lo que querés ahora y lo que querés más.",
+  "No cuenta el día perfecto, cuenta el día que no abandonaste.",
+  "Pequeños hábitos, repetidos todos los días, cambian todo.",
+  "El que la sigue, la consigue.",
+  "No se trata de motivación, se trata de rutina.",
+  "Cada vasito, cada minuto, cada día suma.",
+  "Lo que se mide, mejora.",
+  "El cuerpo aguanta lo que la cabeza no manda.",
+  "Un día a la vez.",
+  "Mejor un poco todos los días que mucho de vez en cuando.",
+  "Hoy es un buen día para empezar de nuevo.",
+  "El progreso no es lineal, pero es progreso.",
+  "Nadie es perfecto, pero la constancia sí se puede.",
+  "Vos contra vos de ayer.",
+  "La racha se cuida un día a la vez.",
+];
+
+function dayOfYear(d) {
+  const start = new Date(d.getFullYear(), 0, 0);
+  const diff = d - start;
+  return Math.floor(diff / 86400000);
+}
+
+const ICON_RULES = [
+  ["dientes", "🦷"],
+  ["presión", "💊"],
+  ["vitamina", "💊"],
+  ["omega", "💊"],
+  ["magnesio", "💊"],
+  ["comer sano", "🥗"],
+  ["caminar", "🚶"],
+  ["agua", "💧"],
+  ["elongar", "🤸"],
+  ["ejercicio", "🏋️"],
+  ["gym", "🏋️"],
+  ["estudio", "📚"],
+  ["meditar", "🧘"],
+  ["alcohol", "🍷"],
+  ["audiolibro", "🎧"],
+  ["ted", "🎧"],
+  ["acostarse", "🌙"],
+  ["levantarse", "⏰"],
+];
+
+function getIcon(name) {
+  const n = name.toLowerCase();
+  for (const [key, icon] of ICON_RULES) {
+    if (n.includes(key)) return icon;
+  }
+  return "⭐";
+}
+
+function cupSvg(filled) {
+  const fill = filled ? "var(--gold)" : "none";
+  const stroke = filled ? "var(--gold)" : "var(--border)";
+  return `<svg viewBox="0 0 24 24" width="22" height="22"><path d="M6 3h12l-1.6 15.2a2 2 0 0 1-2 1.8H9.6a2 2 0 0 1-2-1.8L6 3z" fill="${fill}" stroke="${stroke}" stroke-width="1.6" stroke-linejoin="round"/></svg>`;
+}
+
 function isDoneOn(habit, iso) {
   const v = habit.done[iso];
   if (habit.type === "counter") return (v || 0) >= habit.target;
@@ -231,6 +290,9 @@ function render() {
   document.getElementById("today-jump").style.display = isToday ? "none" : "";
   document.getElementById("next-day").disabled = isToday;
 
+  const quoteIdx = dayOfYear(new Date()) % QUOTES.length;
+  document.getElementById("quote").innerHTML = `<span>“</span>${QUOTES[quoteIdx]}<span>”</span>`;
+
   const list = document.getElementById("list");
   list.innerHTML = "";
 
@@ -238,6 +300,14 @@ function render() {
   const year = new Date().getFullYear();
   const doneToday = state.habits.filter((h) => isDoneOn(h, iso)).length;
   const summary = document.getElementById("summary");
+
+  const ringPercent = state.habits.length ? Math.round((doneToday / state.habits.length) * 100) : 0;
+  const ringCircumference = 2 * Math.PI * 27;
+  const ringFg = document.getElementById("ring-fg");
+  ringFg.style.strokeDasharray = `${ringCircumference}`;
+  ringFg.style.strokeDashoffset = `${ringCircumference * (1 - ringPercent / 100)}`;
+  document.getElementById("ring-text").textContent = `${ringPercent}%`;
+
   if (state.habits.length === 0) {
     summary.textContent = "";
   } else {
@@ -262,10 +332,10 @@ function render() {
   state.habits.forEach((habit) => {
     const streak = computeStreak(habit);
     const stats = yearStats(habit, year);
-    const el = document.createElement("div");
-    el.className = "habit";
-
     const isDoneSelected = isDoneOn(habit, iso);
+    const el = document.createElement("div");
+    el.className = "habit" + (isDoneSelected ? " complete" : "");
+
     const isCounter = habit.type === "counter";
     const selectedCount = habit.done[iso] || 0;
     const isExpanded = expandedIds.has(habit.id);
@@ -303,27 +373,35 @@ function render() {
       `;
     }
 
+    const cupsRow = isCounter
+      ? `<div class="cups-row">${Array.from({ length: habit.target })
+          .map((_, i) => {
+            const filled = i < selectedCount;
+            return `<button class="cup-btn" data-action="water-set" data-id="${habit.id}" data-index="${i}">${cupSvg(filled)}</button>`;
+          })
+          .join("")}</div>
+         <div class="counter-label"><b>${selectedCount}</b>/${habit.target} ${habit.unit || ""}${selectedCount === 1 ? "" : "s"}</div>`
+      : "";
+
     el.innerHTML = `
       <div class="habit-top">
+        <div class="habit-icon">${getIcon(habit.name)}</div>
         <div class="habit-name">${escapeHtml(habit.name)}</div>
         ${
           isCounter
-            ? `<div class="counter-stepper">
-                <button class="stepper-btn" data-action="counter-dec" data-id="${habit.id}">−</button>
-                <span class="counter-value ${isDoneSelected ? "done" : ""}"><b>${selectedCount}</b>/${habit.target} ${habit.unit || ""}${selectedCount === 1 ? "" : "s"}</span>
-                <button class="stepper-btn" data-action="counter-inc" data-id="${habit.id}">+</button>
-              </div>`
+            ? ""
             : `<button class="check-btn ${isDoneSelected ? "done" : ""}" data-action="toggle-today" data-id="${habit.id}">
                 <svg viewBox="0 0 24 24" fill="none"><path d="M4 12l5 5L20 6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
               </button>`
         }
       </div>
-      <div class="row-actions">
-        <span class="habit-streak">Racha: <b>${streak}</b> ${streak === 1 ? "día" : "días"} · ${stats.total === 0 ? "empieza mañana" : `<b>${stats.percent}%</b> este año`}</span>
-      </div>
-      <div class="row-actions">
-        <button class="link-btn" data-action="toggle-year" data-id="${habit.id}">${isExpanded ? "Ocultar año" : "Ver año"}</button>
-        <button class="link-btn" data-action="edit" data-id="${habit.id}">Editar</button>
+      ${cupsRow}
+      <div class="habit-foot">
+        <span class="streak-badge">🔥 <b>${streak}</b> ${streak === 1 ? "día" : "días"}</span>
+        <span class="streak-badge">${stats.total === 0 ? "empieza mañana" : `<b>${stats.percent}%</b> este año`}</span>
+        <div class="foot-spacer"></div>
+        <button class="chip-btn" data-action="toggle-year" data-id="${habit.id}">${isExpanded ? "Ocultar" : "Año"}</button>
+        <button class="chip-btn" data-action="edit" data-id="${habit.id}">Editar</button>
       </div>
       ${yearSection}
     `;
@@ -349,13 +427,14 @@ function toggleDay(habitId, dateIso) {
   render();
 }
 
-function incrementCounter(habitId, delta) {
+function setCounterValue(habitId, index) {
   const habit = state.habits.find((h) => h.id === habitId);
   if (!habit) return;
   const iso = selectedISO;
   const current = habit.done[iso] || 0;
-  const next = Math.max(0, current + delta);
-  if (next === 0) {
+  const target = index + 1;
+  const next = current === target ? target - 1 : target;
+  if (next <= 0) {
     delete habit.done[iso];
   } else {
     habit.done[iso] = next;
@@ -440,10 +519,8 @@ document.getElementById("list").addEventListener("click", (e) => {
     toggleDay(id, selectedISO);
   } else if (action === "toggle-day") {
     toggleDay(id, btn.dataset.date);
-  } else if (action === "counter-inc") {
-    incrementCounter(id, 1);
-  } else if (action === "counter-dec") {
-    incrementCounter(id, -1);
+  } else if (action === "water-set") {
+    setCounterValue(id, parseInt(btn.dataset.index, 10));
   } else if (action === "toggle-year") {
     toggleYear(id);
   } else if (action === "edit") {

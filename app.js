@@ -3,10 +3,12 @@ const SEEDED_KEY = "habitos-seeded-v1";
 const DAY_LABELS = ["D", "L", "M", "M", "J", "V", "S"];
 
 const DEFAULT_HABITS = [
-  "Lavarse los dientes",
+  "Lavarse los dientes (mañana)",
+  "Lavarse los dientes (noche)",
   "Caminar 15 min después del almuerzo",
   "Caminar 15 min después de la cena",
-  "Comer sano",
+  "Comer sano (mañana)",
+  "Comer sano (noche)",
   "No tomar alcohol",
   "1 hora de ejercicio",
   "Audiolibro o charla TED",

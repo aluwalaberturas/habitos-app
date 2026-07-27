@@ -36,7 +36,21 @@
     color:var(--gold); margin:0 0 4px;
   }
   .date{
-    font-size:22px; font-weight:300; letter-spacing:0.01em; margin:0 0 4px; text-transform:capitalize;
+    font-size:22px; font-weight:300; letter-spacing:0.01em; text-transform:capitalize;
+  }
+  .date-nav{
+    display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:4px;
+  }
+  .date-center{ flex:1; text-align:center; min-width:0; }
+  .nav-arrow{
+    width:38px; height:38px; flex-shrink:0; border-radius:50%; border:1px solid var(--border);
+    background:transparent; color:var(--gold); font-size:20px; line-height:1;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .nav-arrow:disabled{ opacity:0.25; }
+  .today-jump{
+    background:none; border:none; color:var(--gold-dim); font-size:11px;
+    letter-spacing:0.08em; text-transform:uppercase; padding:2px 0; margin-top:2px;
   }
   .summary{
     font-size:13px; color:var(--text-dim); margin:0 0 28px; letter-spacing:0.02em;
@@ -92,6 +106,7 @@
   }
   .year-day.pad{ background:transparent; }
   .year-day.future{ background:transparent; border:1px solid var(--border); opacity:0.5; }
+  .year-day.pretrack{ background:transparent; border:1px solid var(--border); opacity:0.25; }
   .year-day.filled{ background:var(--gold-dim); }
   .year-day.today{ box-shadow:0 0 0 1.5px var(--gold); }
   .year-day.today.filled{ background:var(--gold); }
@@ -167,7 +182,14 @@
 <body>
 
   <h1>Hábitos</h1>
-  <div class="date" id="today-label"></div>
+  <div class="date-nav">
+    <button class="nav-arrow" id="prev-day">‹</button>
+    <div class="date-center">
+      <div class="date" id="today-label"></div>
+      <button class="today-jump" id="today-jump" style="display:none">Volver a hoy</button>
+    </div>
+    <button class="nav-arrow" id="next-day">›</button>
+  </div>
   <div class="summary" id="summary"></div>
 
   <div id="list"></div>

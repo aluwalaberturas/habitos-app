@@ -1,0 +1,42 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Habitos App//ES
+CALSCALE:GREGORIAN
+BEGIN:VTIMEZONE
+TZID:America/Argentina/Buenos_Aires
+BEGIN:STANDARD
+DTSTART:19700101T000000
+TZOFFSETFROM:-0300
+TZOFFSETTO:-0300
+TZNAME:-03
+END:STANDARD
+END:VTIMEZONE
+BEGIN:VEVENT
+UID:habitos-reminder-morning-v1@aluwalaberturas.com
+DTSTAMP:20260924T000000Z
+DTSTART;TZID=America/Argentina/Buenos_Aires:20260925T080000
+DTEND;TZID=America/Argentina/Buenos_Aires:20260925T080500
+RRULE:FREQ=DAILY
+SUMMARY:Marcar habitos de la manana
+DESCRIPTION:Abri la app: https://aluwalaberturas.com/habitos-app/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Marcar habitos
+TRIGGER:-PT0M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:habitos-reminder-night-v1@aluwalaberturas.com
+DTSTAMP:20260924T000000Z
+DTSTART;TZID=America/Argentina/Buenos_Aires:20260925T210000
+DTEND;TZID=America/Argentina/Buenos_Aires:20260925T210500
+RRULE:FREQ=DAILY
+SUMMARY:Marcar habitos del dia
+DESCRIPTION:Abri la app y repasa todo: https://aluwalaberturas.com/habitos-app/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Marcar habitos
+TRIGGER:-PT0M
+END:VALARM
+END:VEVENT
+END:VCALENDAR
